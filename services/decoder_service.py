@@ -1,4 +1,5 @@
 import json
+import logging
 import pickle
 import numpy as np
 from fastapi import HTTPException, status
@@ -7,6 +8,15 @@ from utils.preparation_and_segmentation import PreparationAndSegmentation
 from utils.analysis_and_vectorization import AnalysisAndVectorization
 
 embed_model = None
+
+def deserialize(value: bytes):
+    try:
+        return pickle.loads(value)
+    except Exception:
+        try:
+            return json.loads(value.decode("utf-8"))
+        except Exception:
+            return None
 
 class DecoderService:
     @staticmethod
@@ -35,27 +45,36 @@ class DecoderService:
             input_embedding = embed_model.encode(windows_clean[0])
             input_embedding = np.array(input_embedding)
 
-            results = []
             similarity_threshold = 0.75 
 
             keys = RedisService.get_all_keys("default_index:*")
             keys = [k for k in keys if k != "default_index:counter"]
 
-            for key in keys:
-                serialized_data = RedisService.get(key)
+            if not keys:
+                return {"message": "Nenhum dado encontrado para decodificação."}
+
+            serialized_data_list = RedisService.mget(keys)
+            
+            results = []
+            
+            for serialized_data in serialized_data_list:
                 if not serialized_data:
                     continue
 
                 data = deserialize(serialized_data)
-                if not data:
+                if not data or "embedding" not in data:
                     continue
 
-                db_embedding = np.array(data["embedding"])
-
-                similarity = np.dot(input_embedding, db_embedding) / (np.linalg.norm(input_embedding) * np.linalg.norm(db_embedding))
-                
-                if similarity >= similarity_threshold:
-                    results.append({"similarity": similarity, "original_text": data.get("original_text", data.get("text"))})
+                try:
+                    db_embedding = np.array(data["embedding"])
+                    
+                    similarity = np.dot(input_embedding, db_embedding) / (np.linalg.norm(input_embedding) * np.linalg.norm(db_embedding))
+                    
+                    if similarity >= similarity_threshold:
+                        results.append({"similarity": similarity, "original_text": data.get("original_text", data.get("text"))})
+                except Exception as e:
+                    logging.warning(f"Erro ao processar um embedding: {e}")
+                    continue
 
             results.sort(key=lambda x: x["similarity"], reverse=True)
             top_5_results = results[:5]
@@ -67,12 +86,3 @@ class DecoderService:
 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro inesperado na decodificação de Embeddings: {str(e)}")
-
-def deserialize(value: bytes):
-    try:
-        return pickle.loads(value)
-    except Exception:
-        try:
-            return json.loads(value.decode("utf-8"))
-        except Exception:
-            return None
