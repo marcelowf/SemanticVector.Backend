@@ -1,17 +1,18 @@
 import logging
 import redis
 from fastapi import HTTPException, status
+from core.config import settings
 
-redis_connection_string = "xyz"
+connection = settings.redis_connection_string
 
 class RedisService:
     @staticmethod
     def get_client():
         try:
-            password = redis_connection_string.split('password=')[1].split(',')[0]
-            host = redis_connection_string.split(':')[0]
-            port = int(redis_connection_string.split(':')[1].split(',')[0])
-            ssl = "ssl=True" in redis_connection_string
+            password = connection.split('password=')[1].split(',')[0]
+            host = connection.split(':')[0]
+            port = int(connection.split(':')[1].split(',')[0])
+            ssl = "ssl=True" in connection
             return redis.Redis(host=host, port=port, password=password, ssl=ssl, decode_responses=False)
         except Exception as e:
             logging.error(f"Erro ao conectar ao Redis: {e}")
