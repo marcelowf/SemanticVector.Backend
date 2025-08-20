@@ -3,8 +3,8 @@ nlp = spacy.load("pt_core_news_sm")
 stop_words = nlp.Defaults.stop_words
 
 class AnalysisAndVectorization:    
-    # @staticmethod
-    async def clean_and_lemmatize_texts(texts: list) -> list:
+    @staticmethod
+    def clean_and_lemmatize_texts(texts: list) -> list:
         cleaned = []
         for doc in nlp.pipe(texts, disable=['parser','ner']):
             tokens = []
