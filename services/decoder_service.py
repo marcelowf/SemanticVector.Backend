@@ -1,3 +1,4 @@
+import json
 import pickle
 import numpy as np
 from fastapi import HTTPException, status
@@ -36,22 +37,25 @@ class DecoderService:
 
             results = []
             similarity_threshold = 0.75 
-            
+
             keys = RedisService.get_all_keys("default_index:*")
-            
-            if not keys:
-                return {"message": "Nenhum embedding encontrado no banco de dados para comparação."}
+            keys = [k for k in keys if k != "default_index:counter"]
 
             for key in keys:
                 serialized_data = RedisService.get(key)
-                if serialized_data:
-                    data = pickle.loads(serialized_data)
-                    db_embedding = np.array(data["embedding"])
-                    
-                    similarity = np.dot(input_embedding, db_embedding) / (np.linalg.norm(input_embedding) * np.linalg.norm(db_embedding))
-                    
-                    if similarity >= similarity_threshold:
-                        results.append({"similarity": similarity, "original_text": data.get("original_text", data.get("text"))})
+                if not serialized_data:
+                    continue
+
+                data = deserialize(serialized_data)
+                if not data:
+                    continue
+
+                db_embedding = np.array(data["embedding"])
+
+                similarity = np.dot(input_embedding, db_embedding) / (np.linalg.norm(input_embedding) * np.linalg.norm(db_embedding))
+                
+                if similarity >= similarity_threshold:
+                    results.append({"similarity": similarity, "original_text": data.get("original_text", data.get("text"))})
 
             results.sort(key=lambda x: x["similarity"], reverse=True)
             top_5_results = results[:5]
@@ -63,3 +67,12 @@ class DecoderService:
 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro inesperado na decodificação de Embeddings: {str(e)}")
+
+def deserialize(value: bytes):
+    try:
+        return pickle.loads(value)
+    except Exception:
+        try:
+            return json.loads(value.decode("utf-8"))
+        except Exception:
+            return None
