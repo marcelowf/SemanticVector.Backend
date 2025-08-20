@@ -1,6 +1,4 @@
-import logging
 from fastapi import HTTPException, status
-import numpy as np
 from utils.preparation_and_segmentation import PreparationAndSegmentation
 from utils.analysis_and_vectorization import AnalysisAndVectorization
 from .redis_service import RedisService
@@ -35,15 +33,13 @@ class EncoderService:
                 all_processed_texts.extend(windows_clean)
 
             embeddings = embed_model.encode(all_processed_texts)
-            embeddings_list = embeddings.tolist()
 
-            index_name = "default_index"
-            
-            for i, (text, emb) in enumerate(zip(all_processed_texts, embeddings)):
-                key = f"{index_name}:{i}"
+            for text, emb in zip(all_processed_texts, embeddings):
+                idx = RedisService.incr(f"default_index:counter")
+                key = f"default_index:{idx}"
                 RedisService.set(key, pickle.dumps({"text": text, "embedding": emb.tolist()}))
 
-            return embeddings_list
+            return "Processo concluído."
 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro inesperado na geração de Embeddings: {str(e)}")

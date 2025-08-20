@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from sentence_transformers import SentenceTransformer
 from core.config import settings
 from services.encoder_service import EncoderService
+from services.decoder_service import DecoderService
 
 logger = setup_logging()
 
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
     try:
         model = SentenceTransformer(settings.embedding_model_name)
         EncoderService.set_model(model)
+        DecoderService.set_model(model)
         logger.info("Modelo de embedding carregado.")
     except Exception as e:
         logger.error(f"Falha ao iniciar a aplicação: {e}")

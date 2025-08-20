@@ -1,3 +1,3 @@
-from .schema import EmbeddingPayload
+from .schema import EncodePayload
 
-__all__ = ["EmbeddingPayload"]
+__all__ = ["EncodePayload"]

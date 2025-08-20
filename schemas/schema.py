@@ -1,4 +1,7 @@
 from pydantic import BaseModel
 
-class EmbeddingPayload(BaseModel):
+class EncodePayload(BaseModel):
     embedding: list[str]
+    
+class DecodePayload(BaseModel):
+    message: str
