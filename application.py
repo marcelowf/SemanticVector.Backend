@@ -12,6 +12,7 @@ from services.encoder_service import EncoderService
 logger = setup_logging()
 
 @asynccontextmanager
+
 async def lifespan(app: FastAPI):
     logger.info("Iniciando o servidor...")
     try:
@@ -19,7 +20,7 @@ async def lifespan(app: FastAPI):
         EncoderService.set_model(model)
         logger.info("Modelo de embedding carregado.")
     except Exception as e:
-        logger.error(f"Falha ao carregar modelo de embedding: {e}")
+        logger.error(f"Falha ao iniciar a aplicação: {e}")
 
     yield
     logger.info("Desligando o servidor...")

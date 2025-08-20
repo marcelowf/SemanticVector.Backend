@@ -1,6 +1,10 @@
+import logging
 from fastapi import HTTPException, status
+import numpy as np
 from utils.preparation_and_segmentation import PreparationAndSegmentation
 from utils.analysis_and_vectorization import AnalysisAndVectorization
+from .redis_service import RedisService
+import pickle
 
 embed_model = None
 
@@ -13,7 +17,7 @@ class EncoderService:
     @staticmethod
     def encode_embedding(messages: list[str]):
         if embed_model is None:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Serviço de Embedding idisponível.")
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Serviço de Embedding indisponível.")
 
         try:
             all_processed_texts = []
@@ -33,7 +37,13 @@ class EncoderService:
             embeddings = embed_model.encode(all_processed_texts)
             embeddings_list = embeddings.tolist()
 
+            index_name = "default_index"
+            
+            for i, (text, emb) in enumerate(zip(all_processed_texts, embeddings)):
+                key = f"{index_name}:{i}"
+                RedisService.set(key, pickle.dumps({"text": text, "embedding": emb.tolist()}))
+
             return embeddings_list
 
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro inesperado na geração de Embeddings.")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro inesperado na geração de Embeddings: {str(e)}")
